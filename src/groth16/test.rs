@@ -74,10 +74,15 @@ fn test_groth16_verifier() {
     assert!(Groth16::<E>::verify_with_processed_vk(&pvk, &[c], &proof).unwrap());
 
     let start = start_timer!(|| "collect_script");
-    let script = Verifier::verify_proof(&vec![c], &proof, &vk);
+    let mut script = Verifier::verify_proof(&vec![c], &proof, &vk);
     end_timer!(start);
 
     println!("groth16::test_verify_proof = {} bytes", script.len());
+
+    let start = start_timer!(|| "analyze_stack");
+    let (x, y) = script.get_stack();
+    end_timer!(start);
+    assert_eq!([x, y], [0, 1]); // leave "true" on the statck
 
     let start = start_timer!(|| "execute_script");
     let exec_result = execute_script_without_stack_limit(script);
