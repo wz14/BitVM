@@ -2,10 +2,8 @@
 // Re-export what is needed to write treepp scripts
 pub mod treepp {
     pub use crate::execute_script;
-    pub use bitcoin_script::{define_pushable, script};
-
-    define_pushable!();
-    pub use pushable::Builder as Script;
+    pub use bitcoin_script::script;
+    pub use bitcoin_script::Script;
 }
 
 use core::fmt;

@@ -2,7 +2,7 @@ use crate::bigint::U254;
 use crate::bn254::fp254impl::Fp254Impl;
 use crate::bn254::fq::Fq;
 use crate::bn254::fr::Fr;
-use crate::treepp::{pushable, script, Script};
+use crate::treepp::{script, Script};
 use std::sync::OnceLock;
 
 static G1_DOUBLE_PROJECTIVE: OnceLock<Script> = OnceLock::new();
@@ -305,7 +305,6 @@ impl G1Projective {
 
                     // Return (x,y)
                     { Fq::roll(1) }
-
                 OP_ENDIF
             OP_ENDIF
         )
@@ -430,17 +429,12 @@ impl G1Projective {
                     OP_ELSE
                         { G1Projective::copy(3) }
                     OP_ENDIF
-                    OP_TRUE
+                    { G1Projective::add() }
                 OP_ELSE
                     OP_IF
                         { G1Projective::copy(2) }
-                        OP_TRUE
-                    OP_ELSE
-                        OP_FALSE
-                    OP_ENDIF
-                OP_ENDIF
-                OP_IF
                     { G1Projective::add() }
+                    OP_ENDIF
                 OP_ENDIF
             }
         });
@@ -464,17 +458,12 @@ impl G1Projective {
                 OP_ELSE
                     { G1Projective::copy(3) }
                 OP_ENDIF
-                OP_TRUE
+                { G1Projective::add() }
             OP_ELSE
                 OP_IF
                     { G1Projective::copy(2) }
-                    OP_TRUE
-                OP_ELSE
-                    OP_FALSE
-                OP_ENDIF
-            OP_ENDIF
-            OP_IF
                 { G1Projective::add() }
+                OP_ENDIF
             OP_ENDIF
 
             for _ in 1..(Fq::N_BITS) / 2 {
@@ -552,7 +541,7 @@ mod test {
     use crate::bn254::curves::{G1Affine, G1Projective};
     use crate::bn254::fq::Fq;
     use crate::execute_script;
-    use crate::treepp::{pushable, script, Script};
+    use crate::treepp::{script, Script};
 
     use crate::bn254::fp254impl::Fp254Impl;
     use ark_bn254::Fr;
@@ -562,6 +551,7 @@ mod test {
     use core::ops::{Add, Mul};
     use num_bigint::BigUint;
     use num_traits::{One, Zero};
+    use std::collections::HashMap;
     // use std::ops::Mul;
 
     use rand::SeedableRng;

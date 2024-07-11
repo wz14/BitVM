@@ -1,4 +1,4 @@
-use crate::treepp::{pushable, script, Script};
+use crate::treepp::{ script, Script};
 use bitcoin::{opcodes::all::*, Opcode};
 
 // helper functions used on the rest of the u4 code
@@ -139,7 +139,7 @@ mod tests {
 
     use crate::{
         execute_script,
-        treepp::{pushable, script},
+        treepp::{ script},
     };
 
     use crate::u4::u4_std::u4_number_to_nibble;
