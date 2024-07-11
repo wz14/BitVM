@@ -108,7 +108,7 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
     pub fn copy(mut a: u32) -> Script {
         a = (a + 1) * Self::N_LIMBS - 1;
 
-        script! {
+        let mut script = script! {
             if a < 134 {
                 for _ in 0..Self::N_LIMBS {
                     { a } OP_PICK
@@ -120,12 +120,15 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
                 }
                 OP_1SUB OP_PICK
             }
-        }
+        };
+
+        script.add_stack_hint(-1 * (a + 1 + 1) as i32, Self::N_LIMBS as i32);
+        script
     }
 
     pub fn roll(mut a: u32) -> Script {
         if a == 0 {
-            return script! { }
+            return script! {};
         }
         a = (a + 1) * Self::N_LIMBS - 1;
 
@@ -242,7 +245,7 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
 #[cfg(test)]
 mod test {
     use crate::bigint::{BigIntImpl, U254};
-    use crate::treepp::{execute_script, pushable};
+    use crate::treepp::execute_script;
     use bitcoin_script::script;
     use rand::{Rng, SeedableRng};
     use rand_chacha::ChaCha20Rng;

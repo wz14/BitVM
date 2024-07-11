@@ -1,8 +1,11 @@
+use ark_ec::short_weierstrass::Affine;
+use bitcoin::opcodes::all::{OP_ENDIF, OP_EQUAL, OP_FROMALTSTACK, OP_TOALTSTACK};
+
 use crate::bigint::U254;
 use crate::bn254::fp254impl::Fp254Impl;
 use crate::bn254::fq::Fq;
 use crate::bn254::fr::Fr;
-use crate::treepp::{pushable, script, Script};
+use crate::treepp::{script, Script};
 use std::sync::OnceLock;
 
 static G1_DOUBLE_PROJECTIVE: OnceLock<Script> = OnceLock::new();
@@ -161,21 +164,28 @@ impl G1Projective {
 
             // Check if the first point is zero
             { G1Projective::is_zero_keep_element(0) }
-            OP_IF
-                // If so, drop the zero and return the other summand
-                { G1Projective::drop() }
-            OP_ELSE
-                // Otherwise, check if the second point is zero
-                { G1Projective::is_zero_keep_element(1) }
-                OP_IF
-                    // If so, drop the zero and return the other summand
-                    { G1Projective::roll(1) }
-                    { G1Projective::drop() }
-                OP_ELSE
-                    // Otherwise, perform a regular addition
-                    { G1Projective::nonzero_add() }
-                OP_ENDIF
-            OP_ENDIF
+            OP_TOALTSTACK
+            { G1Projective::is_zero_keep_element(1) }
+            OP_DUP OP_ADD OP_FROMALTSTACK OP_ADD // 1_is_zero * 2 + 0_is_zero
+            OP_TOALTSTACK
+
+            { G1Projective::copy(0) }
+            { G1Projective::toaltstack() }
+            { G1Projective::copy(1) }
+            { G1Projective::toaltstack() }
+            { G1Projective::nonzero_add() }
+            { G1Projective::fromaltstack() }
+            { G1Projective::fromaltstack() }
+            { G1Projective::push_zero() }
+
+            OP_FROMALTSTACK
+            { G1Projective::pick_with_4lookup() }
+            { G1Projective::toaltstack() }
+            { G1Projective::drop() }
+            { G1Projective::drop() }
+            { G1Projective::drop() }
+            { G1Projective::drop() }
+            { G1Projective::fromaltstack() }
         }
     }
 
@@ -193,6 +203,32 @@ impl G1Projective {
             { Fq::copy(a + 2) }
             { Fq::copy(a + 2) }
         }
+    }
+
+    pub fn pick() -> Script {
+        script! {
+            for _ in 0..26 { OP_DUP }
+            for _ in 0..26 { OP_ADD }
+            { 26 } OP_ADD // [p1+p0, p1, p0, 0, target, 27*(idx+1)+26]
+            for _ in 0..26 { OP_DUP }
+            for _ in 0..26 { OP_TOALTSTACK }
+            OP_PICK
+            for _ in 0..26 { OP_FROMALTSTACK OP_PICK }
+        }
+    }
+
+    pub fn pick_with_4lookup() -> Script {
+        let mut script = script! {
+            for _ in 0..26 { OP_DUP }
+            for _ in 0..26 { OP_ADD }
+            { 26 } OP_ADD // [p1+p0, p1, p0, 0, target, 27*(idx+1)+26]
+            for _ in 0..26 { OP_DUP }
+            for _ in 0..26 { OP_TOALTSTACK }
+            OP_PICK
+            for _ in 0..26 { OP_FROMALTSTACK OP_PICK }
+        };
+        script.add_stack_hint(-27 * 4 - 1, 27);
+        script
     }
 
     pub fn roll(mut a: u32) -> Script {
@@ -267,47 +303,60 @@ impl G1Projective {
             // Handle zeros
 
             // 1. Check if the first point is zero
-            { G1Projective::is_zero_keep_element(0) }
-            OP_IF
-                // If so, drop the point and return the affine::identity
-                { G1Projective::drop() }
-                { G1Affine::identity() }
-            OP_ELSE
-                // 2. Otherwise, check if the point.z is one
-                { Fq::is_one_keep_element(0) }
-                OP_IF
-                    // 2.1 If so, drop the p.z.
-                    // If Z is one, the point is already normalized, so that: projective.x = affine.x, projective.y = affine.y
-                    { Fq::drop() }
+            { G1Projective::is_zero_keep_element(0) } OP_DUP OP_ADD
+            OP_TOALTSTACK
 
-                OP_ELSE
-                    // 2.2 Otherwise, Z is non-one, so it must have an inverse in a field.
-                    // conpute Z^-1
-                    { Fq::inv() }
-                    // compute Z^-2
-                    { Fq::copy(0) }
-                    { Fq::square() }
-                    // compute Z^-3 = Z^-2 * z^-1
-                    { Fq::copy(0) }
-                    { Fq::roll(2) }
-                    { Fq::mul() }
+            // 2. Otherwise, check if the point.z is one
+            { Fq::is_one_keep_element(0) } OP_FROMALTSTACK OP_ADD
+            OP_TOALTSTACK
 
-                    // For now, stack: [x, y, z^-2, z^-3]
+            { G1Projective::copy(0) }
+            { G1Projective::toaltstack() }
+            { G1Projective::toaltstack() }
+            { G1Projective::push_zero() } // 3
+            { G1Projective::push_zero() } // 2
+            { G1Projective::fromaltstack() }
+            { G1Projective::fromaltstack() }
 
-                    // compute Y/Z^3 = Y * Z^-3
-                    { Fq::roll(2) }
-                    { Fq::mul() }
+            // 2.2 Otherwise, Z is non-one, so it must have an inverse in a field.
+            // conpute Z^-1
+            { Fq::inv() }
+            // compute Z^-2
+            { Fq::copy(0) }
+            { Fq::square() }
+            // compute Z^-3 = Z^-2 * z^-1
+            { Fq::copy(0) }
+            { Fq::roll(2) }
+            { Fq::mul() }
 
-                    // compute X/Z^2 = X * Z^-2
-                    { Fq::roll(1) }
-                    { Fq::roll(2) }
-                    { Fq::mul() }
+            // For now, stack: [x, y, z^-2, z^-3]
 
-                    // Return (x,y)
-                    { Fq::roll(1) }
+            // compute Y/Z^3 = Y * Z^-3
+            { Fq::roll(2) }
+            { Fq::mul() }
 
-                OP_ENDIF
-            OP_ENDIF
+            // compute X/Z^2 = X * Z^-2
+            { Fq::roll(1) }
+            { Fq::roll(2) }
+            { Fq::mul() }
+
+            // Return (x,y)
+            { Fq::roll(1) }
+
+            { Fq::push_zero() }
+
+            OP_FROMALTSTACK
+            { G1Projective::pick_with_4lookup() }
+            { G1Projective::toaltstack() }
+
+            { G1Projective::drop() }
+            { G1Projective::drop() }
+            { G1Projective::drop() }
+            { G1Projective::drop() }
+
+            { G1Projective::fromaltstack() }
+
+            { Fq::drop() } // drop z
         )
     }
 
@@ -418,30 +467,30 @@ impl G1Projective {
     pub fn scalar_mul() -> Script {
         assert_eq!(Fq::N_BITS % 2, 0);
 
+        let mut pick_script = G1Projective::pick_with_4lookup();
+
+        let choose_code = script! {
+            { G1Projective::copy(1) }
+            { G1Projective::copy(3) }
+            { G1Projective::copy(2) }
+            { G1Projective::push_zero() }
+            OP_FROMALTSTACK OP_FROMALTSTACK
+            OP_DUP OP_ADD OP_ADD
+            { pick_script }
+            { G1Projective::toaltstack() }
+            { G1Projective::drop() }
+            { G1Projective::drop() }
+            { G1Projective::drop() }
+            { G1Projective::drop() }
+            { G1Projective::fromaltstack() }
+            { G1Projective::add() }
+        };
+
         let loop_code = G1_SCALAR_MUL_LOOP.get_or_init(|| {
             script! {
                 { G1Projective::double() }
                 { G1Projective::double() }
-
-                OP_FROMALTSTACK OP_FROMALTSTACK
-                OP_IF
-                    OP_IF
-                        { G1Projective::copy(1) }
-                    OP_ELSE
-                        { G1Projective::copy(3) }
-                    OP_ENDIF
-                    OP_TRUE
-                OP_ELSE
-                    OP_IF
-                        { G1Projective::copy(2) }
-                        OP_TRUE
-                    OP_ELSE
-                        OP_FALSE
-                    OP_ENDIF
-                OP_ENDIF
-                OP_IF
-                    { G1Projective::add() }
-                OP_ENDIF
+                { choose_code.clone() }
             }
         });
 
@@ -457,25 +506,7 @@ impl G1Projective {
 
             { G1Projective::push_zero() }
 
-            OP_FROMALTSTACK OP_FROMALTSTACK
-            OP_IF
-                OP_IF
-                    { G1Projective::copy(1) }
-                OP_ELSE
-                    { G1Projective::copy(3) }
-                OP_ENDIF
-                OP_TRUE
-            OP_ELSE
-                OP_IF
-                    { G1Projective::copy(2) }
-                    OP_TRUE
-                OP_ELSE
-                    OP_FALSE
-                OP_ENDIF
-            OP_ENDIF
-            OP_IF
-                { G1Projective::add() }
-            OP_ENDIF
+            {choose_code.clone()}
 
             for _ in 1..(Fq::N_BITS) / 2 {
                 { loop_code.clone() }
@@ -552,7 +583,7 @@ mod test {
     use crate::bn254::curves::{G1Affine, G1Projective};
     use crate::bn254::fq::Fq;
     use crate::execute_script;
-    use crate::treepp::{pushable, script, Script};
+    use crate::treepp::{script, Script};
 
     use crate::bn254::fp254impl::Fp254Impl;
     use ark_bn254::Fr;
@@ -562,6 +593,7 @@ mod test {
     use core::ops::{Add, Mul};
     use num_bigint::BigUint;
     use num_traits::{One, Zero};
+    use std::collections::HashMap;
     // use std::ops::Mul;
 
     use rand::SeedableRng;
@@ -842,6 +874,7 @@ mod test {
             );
             let start = start_timer!(|| "execute_script");
             let exec_result = execute_script(script);
+            assert_eq!(exec_result.final_stack.len(), 1);
             end_timer!(start);
             assert!(exec_result.success);
         }
