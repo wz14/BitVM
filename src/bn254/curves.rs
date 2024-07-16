@@ -169,14 +169,18 @@ impl G1Projective {
             OP_DUP OP_ADD OP_FROMALTSTACK OP_ADD // 1_is_zero * 2 + 0_is_zero
             OP_TOALTSTACK
 
+            { G1Projective::push_zero() }
+            { G1Projective::roll(1) }
             { G1Projective::copy(0) }
             { G1Projective::toaltstack() }
-            { G1Projective::copy(1) }
+
+            { G1Projective::roll(2) }
+            { G1Projective::copy(0) }
             { G1Projective::toaltstack() }
+
+            { G1Projective::fromaltstack() }
+            { G1Projective::fromaltstack() }
             { G1Projective::nonzero_add() }
-            { G1Projective::fromaltstack() }
-            { G1Projective::fromaltstack() }
-            { G1Projective::push_zero() }
 
             OP_FROMALTSTACK
             { G1Projective::pick_with_4lookup() }
@@ -467,22 +471,12 @@ impl G1Projective {
     pub fn scalar_mul() -> Script {
         assert_eq!(Fq::N_BITS % 2, 0);
 
-        let mut pick_script = G1Projective::pick_with_4lookup();
-
         let choose_code = script! {
-            { G1Projective::copy(1) }
-            { G1Projective::copy(3) }
-            { G1Projective::copy(2) }
-            { G1Projective::push_zero() }
-            OP_FROMALTSTACK OP_FROMALTSTACK
-            OP_DUP OP_ADD OP_ADD
-            { pick_script }
-            { G1Projective::toaltstack() }
-            { G1Projective::drop() }
-            { G1Projective::drop() }
-            { G1Projective::drop() }
-            { G1Projective::drop() }
-            { G1Projective::fromaltstack() }
+            OP_4
+            OP_FROMALTSTACK OP_DUP OP_ADD
+            OP_FROMALTSTACK OP_ADD
+            OP_SUB // 4-index
+            { G1Projective::pick_with_4lookup() }
             { G1Projective::add() }
         };
 
@@ -504,15 +498,24 @@ impl G1Projective {
             { G1Projective::copy(1) }
             { G1Projective::add() }
 
+            { G1Projective::toaltstack() }
+            { G1Projective::toaltstack() }
+            { G1Projective::toaltstack() }
             { G1Projective::push_zero() }
+            { G1Projective::fromaltstack() }
+            { G1Projective::fromaltstack() }
+            { G1Projective::fromaltstack() }
 
-            {choose_code.clone()}
+            { G1Projective::push_zero() } // sum
+
+            { choose_code.clone() }
 
             for _ in 1..(Fq::N_BITS) / 2 {
                 { loop_code.clone() }
             }
 
             { G1Projective::toaltstack() }
+            { G1Projective::drop() } // drop table
             { G1Projective::drop() }
             { G1Projective::drop() }
             { G1Projective::drop() }
@@ -817,7 +820,7 @@ mod test {
             };
             println!("curves::test_scalar_mul = {} bytes", script.len());
             let exec_result = execute_script(script);
-            // println!("res: {:100}", exec_result);
+            println!("res: {:100}", exec_result);
             assert!(exec_result.success);
         }
     }

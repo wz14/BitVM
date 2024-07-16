@@ -249,7 +249,6 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
 
         // pick something from the stack
         let mut script = script! {
-            /*
             { OP_NDUP(Self::N_BITS as usize) }
             for i in 0..=Self::N_BITS {
                 { Self::N_BITS - i } OP_EQUAL OP_TOALTSTACK
@@ -259,7 +258,6 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
                     { Self::push_u32_le(&inv_list[i as usize].to_u32_digits()) }
                 OP_ENDIF
             }
-            */
         };
         script.add_stack_hint(-1, Self::N_LIMBS as i32 - 1);
         script
