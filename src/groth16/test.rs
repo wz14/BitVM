@@ -1,5 +1,8 @@
+use std::collections::HashMap;
+use std::default;
 use std::fs::File;
 use std::io::Write;
+use std::ops::{Add, AddAssign};
 
 use crate::execute_script_without_stack_limit;
 use crate::groth16::verifier::Verifier;
@@ -83,28 +86,32 @@ fn test_groth16_verifier() {
 
     println!("groth16::test_verify_proof = {} bytes", script.len());
 
-    // let start = start_timer!(|| "analyze_stack");
-    // let (x, y) = script.get_stack();
-    // end_timer!(start);
-    // assert_eq!([x, y], [0, 1]); // leave "true" on the statck
+    let start = start_timer!(|| "analyze_stack");
+    let (_, y) = script.get_stack();
+    end_timer!(start);
+    assert_eq!(y, 1); // leave "true" on the statck
 
-    let mut chunker = Chunker::new(script, 4 * 1000 * 1000, 3 * 1000 * 1000);
+    println!("stack analyze done");
+
+    let mut chunker = Chunker::new(script.clone(), 4 * 1000 * 1000, 3 * 1000 * 1000);
     let chunks = chunker.find_chunks();
 
     let file_path = "/Users/yufengzhang/Workplace/chunker.txt";
     let mut file = File::create(&file_path).unwrap();
     for chunk in chunks {
         let output = format!(
-            "chunk size {}, input size {}, output size {}",
+            "chunk size {}, input size {}, output size {} \n",
             chunk.0, chunk.1, chunk.2
         );
         write!(file, "{}", output).unwrap();
         println!("{}", output);
     }
 
-    // let start = start_timer!(|| "execute_script");
-    // let exec_result = execute_script_without_stack_limit(script);
-    // end_timer!(start);
+    println!("chunker done");
 
-    // assert!(exec_result.success);
+    let start = start_timer!(|| "execute_script");
+    let exec_result = execute_script_without_stack_limit(script);
+    end_timer!(start);
+
+    assert!(exec_result.success);
 }
