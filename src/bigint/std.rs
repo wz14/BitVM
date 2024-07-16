@@ -109,7 +109,6 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
         a = (a + 1) * Self::N_LIMBS - 1;
 
         let mut script = script! {
-            /*
             if a < 134 {
                 for _ in 0..Self::N_LIMBS {
                     { a } OP_PICK
@@ -121,7 +120,6 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
                 }
                 OP_1SUB OP_PICK
             }
-            */
         };
 
         script.add_stack_hint(-1 * (a + 1 + 1) as i32, Self::N_LIMBS as i32);
