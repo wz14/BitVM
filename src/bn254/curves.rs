@@ -225,13 +225,13 @@ impl G1Projective {
         let mut script = script! {
             for _ in 0..26 { OP_DUP }
             for _ in 0..26 { OP_ADD }
-            { 26 } OP_ADD // [p1+p0, p1, p0, 0, target, 27*(idx+1)+26]
+            { 26 } OP_ADD // [p1+p0, p1, p0, 0, target, 27*idx+26]
             for _ in 0..26 { OP_DUP }
             for _ in 0..26 { OP_TOALTSTACK }
             OP_PICK
             for _ in 0..26 { OP_FROMALTSTACK OP_PICK }
         };
-        script.add_stack_hint(-27 * 4 - 1, 27);
+        script.add_stack_hint(-27 * 4 - 1, 26);
         script
     }
 
