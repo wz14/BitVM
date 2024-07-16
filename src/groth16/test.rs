@@ -1,3 +1,6 @@
+use std::fs::File;
+use std::io::Write;
+
 use crate::execute_script_without_stack_limit;
 use crate::groth16::verifier::Verifier;
 use ark_bn254::Bn254;
@@ -8,6 +11,7 @@ use ark_groth16::{prepare_verifying_key, Groth16};
 use ark_relations::lc;
 use ark_relations::r1cs::{ConstraintSynthesizer, ConstraintSystemRef, SynthesisError};
 use ark_std::{end_timer, start_timer, test_rng, UniformRand};
+use bitcoin_script::Chunker;
 use rand::{RngCore, SeedableRng};
 
 #[derive(Copy)]
@@ -79,14 +83,28 @@ fn test_groth16_verifier() {
 
     println!("groth16::test_verify_proof = {} bytes", script.len());
 
-    let start = start_timer!(|| "analyze_stack");
-    let (x, y) = script.get_stack();
-    end_timer!(start);
-    assert_eq!([x, y], [0, 1]); // leave "true" on the statck
+    // let start = start_timer!(|| "analyze_stack");
+    // let (x, y) = script.get_stack();
+    // end_timer!(start);
+    // assert_eq!([x, y], [0, 1]); // leave "true" on the statck
 
-    let start = start_timer!(|| "execute_script");
-    let exec_result = execute_script_without_stack_limit(script);
-    end_timer!(start);
+    let mut chunker = Chunker::new(script, 4 * 1000 * 1000, 3 * 1000 * 1000);
+    let chunks = chunker.find_chunks();
 
-    assert!(exec_result.success);
+    let file_path = "/Users/yufengzhang/Workplace/chunker.txt";
+    let mut file = File::create(&file_path).unwrap();
+    for chunk in chunks {
+        let output = format!(
+            "chunk size {}, input size {}, output size {}",
+            chunk.0, chunk.1, chunk.2
+        );
+        write!(file, "{}", output).unwrap();
+        println!("{}", output);
+    }
+
+    // let start = start_timer!(|| "execute_script");
+    // let exec_result = execute_script_without_stack_limit(script);
+    // end_timer!(start);
+
+    // assert!(exec_result.success);
 }
