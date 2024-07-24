@@ -625,6 +625,16 @@ mod test {
     }
 
     #[test]
+    fn test_1() {
+        println!("{:?}", Fq::double(0).get_stack());
+        let mut script = script!(
+                {Fq::copy(1)}
+                {Fq::double(0)}
+        );
+        println!("{:?}", script.get_stack());
+    }
+
+    #[test]
     fn test_affine_identity() {
         let equalverify = G1Affine::equalverify();
         println!("G1Affine.equalverify: {} bytes", equalverify.len());

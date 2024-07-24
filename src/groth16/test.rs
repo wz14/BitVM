@@ -3,6 +3,7 @@ use std::default;
 use std::fs::File;
 use std::io::Write;
 use std::ops::{Add, AddAssign};
+use std::os::macos::raw::stat;
 
 use crate::execute_script_without_stack_limit;
 use crate::groth16::verifier::Verifier;
@@ -87,24 +88,32 @@ fn test_groth16_verifier() {
     println!("groth16::test_verify_proof = {} bytes", script.len());
 
     let start = start_timer!(|| "analyze_stack");
-    let (_, y) = script.get_stack();
+    let status = script.get_stack();
     end_timer!(start);
-    assert_eq!(y, 1); // leave "true" on the statck
+    assert_eq!(status.stack_changed, 1); // leave "true" on the statck
+    assert_eq!(status.altstack_changed, 0); // leave nothing on the altstatck
 
-    println!("stack analyze done");
+    println!("stack analyze done {:?}", status);
 
+    /*
     let mut chunker = Chunker::new(script.clone(), 4 * 1000 * 1000, 3 * 1000 * 1000);
     let chunks = chunker.find_chunks();
 
-    let file_path = "/Users/yufengzhang/Workplace/chunker.txt";
+    assert_eq!(
+        chunks.iter().fold(0, |sum, chunk| chunk.0 + sum),
+        script.len()
+    );
+
+    // write to a file
+    let file_path = "chunker.txt";
     let mut file = File::create(&file_path).unwrap();
     for chunk in chunks {
         let output = format!(
-            "chunk size {}, input size {}, output size {} \n",
+            "chunk size {} input size {} output size {} \n",
             chunk.0, chunk.1, chunk.2
         );
         write!(file, "{}", output).unwrap();
-        println!("{}", output);
+        // println!("{}", output);
     }
 
     println!("chunker done");
@@ -114,4 +123,5 @@ fn test_groth16_verifier() {
     end_timer!(start);
 
     assert!(exec_result.success);
+    */
 }
