@@ -221,6 +221,20 @@ impl G1Projective {
         }
     }
 
+    pub fn pick_with_5lookup() -> Script {
+        let mut script = script! {
+            for _ in 0..26 { OP_DUP }
+            for _ in 0..26 { OP_ADD }
+            { 26 } OP_ADD // [p1+p0, p1, p0, 0, target, 27*idx+26]
+            for _ in 0..26 { OP_DUP }
+            for _ in 0..26 { OP_TOALTSTACK }
+            OP_PICK
+            for _ in 0..26 { OP_FROMALTSTACK OP_PICK }
+        };
+        script.add_stack_hint(-27 * 5 - 1, 26);
+        script
+    }
+
     pub fn pick_with_4lookup() -> Script {
         let mut script = script! {
             for _ in 0..26 { OP_DUP }
@@ -476,7 +490,7 @@ impl G1Projective {
             OP_FROMALTSTACK OP_DUP OP_ADD
             OP_FROMALTSTACK OP_ADD
             OP_SUB // 4-index
-            { G1Projective::pick_with_4lookup() }
+            { G1Projective::pick_with_5lookup() }
             { G1Projective::add() }
         };
 

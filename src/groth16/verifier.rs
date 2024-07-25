@@ -7,7 +7,7 @@ use crate::bn254::pairing::Pairing;
 use crate::bn254::utils::fq12_push;
 use crate::groth16::constants::{LAMBDA, P_POW3};
 use crate::groth16::offchain_checker::compute_c_wi;
-use crate::treepp::{ script, Script};
+use crate::treepp::{script, Script};
 use ark_bn254::{Bn254, G1Projective};
 use ark_ec::bn::G1Prepared;
 use ark_ec::pairing::Pairing as ark_Pairing;
@@ -165,7 +165,7 @@ pub fn check_pairing(precompute_lines: &Vec<G2Prepared>, hint: ark_bn254::Fq12) 
 
 // Push constants to stack
 // Return Stack: [beta_12, beta_13, beta_22, 1/2, B]
-fn constants() -> Script {
+pub fn constants() -> Script {
     script! {
         // beta_12
         { Fq::push_dec("21575463638280843010398324269430826099269044274347216827212613867836435027261") }

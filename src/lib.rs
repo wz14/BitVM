@@ -7,8 +7,9 @@ pub mod treepp {
 }
 
 use core::fmt;
+use std::borrow::BorrowMut;
 
-use bitcoin::{hashes::Hash, hex::DisplayHex, Opcode, TapLeafHash, Transaction};
+use bitcoin::{hashes::Hash, hex::DisplayHex, Opcode, ScriptBuf, TapLeafHash, Transaction};
 use bitcoin_scriptexec::{Exec, ExecCtx, ExecError, ExecStats, Options, Stack, TxTemplate};
 
 pub mod bigint;
@@ -59,6 +60,7 @@ pub struct ExecuteInfo {
     pub success: bool,
     pub error: Option<ExecError>,
     pub final_stack: FmtStack,
+    pub alt_stack: FmtStack,
     pub remaining_script: String,
     pub last_opcode: Option<Opcode>,
     pub stats: ExecStats,
@@ -124,6 +126,7 @@ pub fn execute_script(script: treepp::Script) -> ExecuteInfo {
         error: res.error.clone(),
         last_opcode: res.opcode,
         final_stack: FmtStack(exec.stack().clone()),
+        alt_stack: FmtStack(exec.altstack().clone()),
         remaining_script: exec.remaining_script().to_asm_string(),
         stats: exec.stats().clone(),
     }
@@ -169,15 +172,66 @@ pub fn execute_script_without_stack_limit(script: treepp::Script) -> ExecuteInfo
         error: res.error.clone(),
         last_opcode: res.opcode,
         final_stack: FmtStack(exec.stack().clone()),
+        alt_stack: FmtStack(exec.altstack().clone()),
         remaining_script: exec.remaining_script().to_asm_string(),
         stats: exec.stats().clone(),
     }
+}
+
+fn execute_sub_script(
+    script: Vec<u8>,
+    stack: Vec<Vec<u8>>,
+    mut alt_stack: Vec<Vec<u8>>,
+) -> ExecuteInfo {
+    // Get the default options for the script exec.
+    let mut opts = Options::default();
+    // Do not enforce the stack limit.
+    opts.enforce_stack_limit = false;
+
+    alt_stack.reverse();
+    let mut exec = Exec::new(
+        ExecCtx::Tapscript,
+        opts,
+        TxTemplate {
+            tx: Transaction {
+                version: bitcoin::transaction::Version::TWO,
+                lock_time: bitcoin::locktime::absolute::LockTime::ZERO,
+                input: vec![],
+                output: vec![],
+            },
+            prevouts: vec![],
+            input_idx: 0,
+            taproot_annex_scriptleaf: Some((TapLeafHash::all_zeros(), None)),
+        },
+        ScriptBuf::from(vec![vec![0x6b; alt_stack.len()], script].concat()), // Add to_alt_stack
+        vec![stack, alt_stack].concat(),
+    )
+    .expect("error creating exec");
+
+    loop {
+        if exec.exec_next().is_err() {
+            break;
+        }
+    }
+    let res = exec.result().unwrap();
+    let execute_info = ExecuteInfo {
+        success: res.success,
+        error: res.error.clone(),
+        last_opcode: res.opcode,
+        final_stack: FmtStack(exec.stack().clone()),
+        alt_stack: FmtStack(exec.altstack().clone()),
+        remaining_script: exec.remaining_script().to_asm_string(),
+        stats: exec.stats().clone(),
+    };
+
+    execute_info
 }
 
 #[cfg(test)]
 mod test {
     use crate::bn254;
     use crate::bn254::fp254impl::Fp254Impl;
+    use crate::execute_sub_script;
 
     use super::execute_script_without_stack_limit;
     use super::treepp::*;
@@ -225,6 +279,22 @@ mod test {
             OP_1
         };
         let exec_result = execute_script_without_stack_limit(script);
+        assert!(exec_result.success);
+    }
+
+    #[test]
+    fn test_sub_script() {
+        let script = script! {
+            for _ in 0..1001 {
+                OP_1
+            }
+            for _ in 0..1001 {
+                OP_DROP
+            }
+            OP_1
+        };
+        let exec_result = execute_sub_script(script.compile().to_bytes(), vec![], vec![]);
+        println!("res: {:?}", exec_result);
         assert!(exec_result.success);
     }
 }

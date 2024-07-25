@@ -106,6 +106,7 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
     }
 
     pub fn copy(mut a: u32) -> Script {
+        let b = a;
         a = (a + 1) * Self::N_LIMBS - 1;
 
         let mut script = script! {
@@ -122,7 +123,7 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
             }
         };
 
-        script.add_stack_hint(-1 * (a + 1 + 1) as i32, Self::N_LIMBS as i32);
+        script.add_stack_hint(-1 * ((b + 1) * Self::N_LIMBS) as i32, Self::N_LIMBS as i32);
         script
     }
 

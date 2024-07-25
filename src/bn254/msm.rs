@@ -5,7 +5,7 @@ use crate::bn254::fr::Fr;
 use crate::treepp::{script, Script};
 use num_bigint::BigUint;
 
-fn g1_projective_push(point: ark_bn254::G1Projective) -> Script {
+pub fn g1_projective_push(point: ark_bn254::G1Projective) -> Script {
     script! {
         { Fq::push_u32_le(&BigUint::from(point.x).to_u32_digits()) }
         { Fq::push_u32_le(&BigUint::from(point.y).to_u32_digits()) }
@@ -20,7 +20,7 @@ pub fn g1_affine_push(point: ark_bn254::G1Affine) -> Script {
     }
 }
 
-fn fr_push(scalar: ark_bn254::Fr) -> Script {
+pub fn fr_push(scalar: ark_bn254::Fr) -> Script {
     script! {
         { Fr::push_u32_le(&BigUint::from(scalar).to_u32_digits()) }
     }
