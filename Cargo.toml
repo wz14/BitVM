@@ -5,8 +5,8 @@ edition = "2021"
 exclude = ["tests"]
 
 [dependencies]
-# bitcoin-script = { git = "https://github.com/wz14/rust-bitcoin-script.git", branch= "stack_analzyer" }
-bitcoin-script = { path = "../rust-bitcoin-script" }
+bitcoin-script = { git = "https://github.com/wz14/rust-bitcoin-script.git", branch= "chunker" }
+# bitcoin-script = { path = "../rust-bitcoin-script" }
 bitcoin = { git = "https://github.com/rust-bitcoin/rust-bitcoin", branch = "bitvm", features = ["rand-std"]}
 strum = "0.26"
 strum_macros = "0.26"
