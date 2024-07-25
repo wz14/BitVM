@@ -402,8 +402,6 @@ pub trait Fp254Impl {
 
     fn double(a: u32) -> Script {
         let mut script = script! {
-            { 0x3 }
-            /*
             { Self::roll(a) }
             // ⋯ A₈ A₇ A₆ A₅ A₄ A₃ A₂ A₁ A₀
             OP_DUP
@@ -496,7 +494,6 @@ pub trait Fp254Impl {
             OP_ENDIF
             // ⋯ 2⋅A₈+C₇⁺ 2⋅A₇+C₆⁺ ... 2⋅A₁+C₀⁺ 2⋅A₀
             // ⋯ (2⋅A₈+C₇⁺)-(C₇⁻+M₈) ... 2⋅A₀-M₀
-            */
         };
         script.add_stack_hint(-1 * ((a + 1) * Self::N_LIMBS) as i32, 0);
         script
