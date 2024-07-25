@@ -142,7 +142,7 @@ fn test_groth16_verifier() {
 
     println!("stack analyze done {:?}", status);
 
-    let mut chunker = Chunker::new(script.clone(), 4 * 1000 * 1000, 3 * 1000 * 1000);
+    let mut chunker = Chunker::new(script.clone(), 4 * 1000 * 1000, 1 * 1000 * 1000);
 
     /*
     let first_chunk = chunker.find_next_chunk();
@@ -167,7 +167,7 @@ fn test_groth16_verifier() {
     return;
     */
 
-    let chunks = chunker.find_chunks();
+    let chunks = chunker.find_chunks_and_analyze_stack();
     assert_eq!(
         chunks.iter().fold(0, |sum, chunk| chunk.0 + sum),
         script.len(),
